@@ -1,6 +1,9 @@
 # Secrets — never commit
 .env
 
+# Raw SEC filings (87GB, too large for git)
+sec_filings_full/
+
 # Python
 __pycache__/
 *.pyc
