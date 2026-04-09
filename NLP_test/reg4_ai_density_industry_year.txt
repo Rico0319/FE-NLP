@@ -1,0 +1,30 @@
+                            OLS Regression Results                            
+==============================================================================
+Dep. Variable:      AI_Density_per10k   R-squared:                       0.366
+Model:                            OLS   Adj. R-squared:                  0.310
+Method:                 Least Squares   F-statistic:                     8.316
+Date:                Thu, 09 Apr 2026   Prob (F-statistic):           4.13e-05
+Time:                        01:10:27   Log-Likelihood:                -76.917
+No. Observations:                  50   AIC:                             163.8
+Df Residuals:                      45   BIC:                             173.4
+Df Model:                           4                                         
+Covariance Type:                  HC3                                         
+=====================================================================================================
+                                        coef    std err          z      P>|z|      [0.025      0.975]
+-----------------------------------------------------------------------------------------------------
+Intercept                          -509.9867    205.498     -2.482      0.013    -912.756    -107.218
+C(industry)[T.Financial Services]    -0.2687      1.214     -0.221      0.825      -2.647       2.110
+C(industry)[T.Insurance]             -1.4919      1.186     -1.258      0.208      -3.816       0.832
+C(industry)[T.Utilities]             -1.7180      1.207     -1.423      0.155      -4.083       0.648
+year                                  0.2532      0.102      2.480      0.013       0.053       0.453
+==============================================================================
+Omnibus:                       52.875   Durbin-Watson:                   1.502
+Prob(Omnibus):                  0.000   Jarque-Bera (JB):              346.333
+Skew:                           2.605   Prob(JB):                     6.23e-76
+Kurtosis:                      14.794   Cond. No.                     1.80e+06
+==============================================================================
+
+Notes:
+[1] Standard Errors are heteroscedasticity robust (HC3)
+[2] The condition number is large, 1.8e+06. This might indicate that there are
+strong multicollinearity or other numerical problems.
