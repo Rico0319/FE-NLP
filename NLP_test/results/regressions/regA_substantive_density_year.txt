@@ -1,0 +1,27 @@
+                             OLS Regression Results                            
+===============================================================================
+Dep. Variable:     substantive_density   R-squared:                       0.028
+Model:                             OLS   Adj. R-squared:                  0.008
+Method:                  Least Squares   F-statistic:                    0.9472
+Date:                 Thu, 09 Apr 2026   Prob (F-statistic):              0.335
+Time:                         01:28:42   Log-Likelihood:                -22.520
+No. Observations:                   50   AIC:                             49.04
+Df Residuals:                       48   BIC:                             52.86
+Df Model:                            1                                         
+Covariance Type:                   HC3                                         
+==============================================================================
+                 coef    std err          z      P>|z|      [0.025      0.975]
+------------------------------------------------------------------------------
+Intercept    -56.9914     58.558     -0.973      0.330    -171.763      57.780
+year           0.0282      0.029      0.973      0.330      -0.029       0.085
+==============================================================================
+Omnibus:                      109.134   Durbin-Watson:                   1.986
+Prob(Omnibus):                  0.000   Jarque-Bera (JB):             4101.811
+Skew:                           6.560   Prob(JB):                         0.00
+Kurtosis:                      45.388   Cond. No.                     1.79e+06
+==============================================================================
+
+Notes:
+[1] Standard Errors are heteroscedasticity robust (HC3)
+[2] The condition number is large, 1.79e+06. This might indicate that there are
+strong multicollinearity or other numerical problems.

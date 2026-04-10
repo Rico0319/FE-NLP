@@ -1,0 +1,34 @@
+                             OLS Regression Results                            
+===============================================================================
+Dep. Variable:     substantive_density   R-squared:                       0.340
+Model:                             OLS   Adj. R-squared:                  0.211
+Method:                  Least Squares   F-statistic:                    0.1153
+Date:                 Thu, 09 Apr 2026   Prob (F-statistic):              0.998
+Time:                         01:28:42   Log-Likelihood:                -12.834
+No. Observations:                   50   AIC:                             43.67
+Df Residuals:                       41   BIC:                             60.88
+Df Model:                            8                                         
+Covariance Type:                   HC3                                         
+====================================================================================
+                       coef    std err          z      P>|z|      [0.025      0.975]
+------------------------------------------------------------------------------------
+Intercept           12.1258     58.584      0.207      0.836    -102.696     126.948
+C(ticker)[T.AEP]    -0.1301      0.183     -0.712      0.476      -0.488       0.228
+C(ticker)[T.AFL]    -0.1471      0.195     -0.756      0.450      -0.528       0.234
+C(ticker)[T.AIG]    -0.4380      0.525     -0.834      0.404      -1.467       0.591
+C(ticker)[T.AXP]    -0.3505      0.395     -0.887      0.375      -1.125       0.424
+C(ticker)[T.UNM]    -0.0996      0.159     -0.628      0.530      -0.410       0.211
+C(ticker)[T.WRB]    -0.1055      0.169     -0.626      0.532      -0.436       0.225
+generic_density      0.3225      0.362      0.892      0.373      -0.386       1.031
+year                -0.0059      0.029     -0.205      0.837      -0.063       0.051
+==============================================================================
+Omnibus:                       66.179   Durbin-Watson:                   2.182
+Prob(Omnibus):                  0.000   Jarque-Bera (JB):              849.053
+Skew:                           3.175   Prob(JB):                    4.27e-185
+Kurtosis:                      22.163   Cond. No.                     2.06e+06
+==============================================================================
+
+Notes:
+[1] Standard Errors are heteroscedasticity robust (HC3)
+[2] The condition number is large, 2.06e+06. This might indicate that there are
+strong multicollinearity or other numerical problems.

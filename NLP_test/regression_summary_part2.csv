@@ -1,6 +1,0 @@
-model,coef,pval,pseudo_r2,coef_sub,pval_sub
-Substantive_Density ~ Year,0.028222095413769507,0.33042632099680835,,,
-Generic_Density ~ Year,0.12278061624867734,0.013479023464645964,,,
-Has_Substantive ~ Year (Logit),0.768801667956095,0.3359187391112083,0.16798620642047146,,
-Substantive_Ratio ~ Year (AI-firms),0.010551395507149685,0.3559496948365225,,,
-Substantive_Density ~ Generic_Density + Year + Firm FE,,,,0.3224978510957784,0.3726385573640473

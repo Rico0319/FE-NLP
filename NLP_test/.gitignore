@@ -1,4 +1,4 @@
-# Secrets — never commit
+# Secrets — NEVER commit
 .env
 
 # Raw SEC filings (87GB, too large for git)
@@ -7,12 +7,17 @@ sec_filings_full/
 # Python
 __pycache__/
 *.pyc
+*.pyo
 
 # Virtual envs
 *.egg-info/
 .venv/
 env/
+NLP-env/
 
 # IDE
 .vscode/
 .idea/
+
+# Checkpoint files (temporary)
+.classification_checkpoint

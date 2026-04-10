@@ -1,8 +1,0 @@
-ticker,industry,n_filings,ai_disclosure_rate,mean_ai_freq,max_ai_freq,mean_ai_density,has_llm
-ADP,Business Services,7,0.42857142857142855,1.2857142857142858,6,1.6860349103521304,1
-AEP,Utilities,8,0.125,0.25,2,0.09466828233868525,0
-AFL,Insurance,8,0.375,0.375,1,0.14714774036629935,0
-AIG,Insurance,5,0.8,8.4,19,1.2685467043644845,0
-AXP,Financial Services,8,0.875,3.5,8,1.543941403166764,1
-UNM,Insurance,8,0.0,0.0,0,0.0,0
-WRB,Insurance,6,0.0,0.0,0,0.0,0
