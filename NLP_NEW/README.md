@@ -238,11 +238,6 @@ Per the professor's specification:
 
 ---
 
-## Team Notes
-
-- **Rico**: Data cleaning pipeline (this document), classification updates, regression analysis
-- **fedorico**: [TBD]
-- **Caroline**: [TBD]
 
 ## Version History
 
@@ -257,4 +252,3 @@ Per the professor's specification:
 
 1. **Large filings**: ~400 filings (11.5%) have MD&A sections >300KB. These are primarily utility companies (AEP, EXC, ETR, SO) and financial firms (JPM, AIG) with extensive regulatory disclosures. These are legitimate, not extraction errors.
 2. **Very small filings**: ~4 filings have MD&A <5KB. These may be shell companies or filings with minimal MD&A sections. Worth reviewing individually.
-3. **Data file size**: The sentence-level master file is 1.1GB. Not suitable for git. Use symlinks or copy as needed.
