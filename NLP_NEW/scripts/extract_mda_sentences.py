@@ -71,7 +71,7 @@ def _import_deps():
 # Config
 # ============================================================
 BASE = Path(__file__).parent
-FILING_ROOT = BASE.parent / "sec_filings_full" / "sec-edgar-filings"
+FILING_ROOT = BASE.parent.parent / "NLP_test" / "sec_filings_full" / "sec-edgar-filings"
 OUTPUT_FILE = BASE.parent / "data" / "intermediate" / "mdna_sentence_master.jsonl"
 CHECKPOINT_FILE = BASE / ".extract_mda_checkpoint"
 
@@ -101,6 +101,22 @@ AI_PATTERN = re.compile(
 # ============================================================
 # SGML Full-Submission Parser
 # ============================================================
+
+def _extract_filing_date_from_sgmml(filepath: str) -> str:
+    """Extract the filing date from the SEC-HEADER section of a full-submission file."""
+    with open(filepath, "r", encoding="utf-8", errors="ignore") as f:
+        content = f.read()
+    # Look for ACCEPTANCE-DATETIME or FILED AS OF DATE
+    m = re.search(r'FILED\s+AS\s+OF\s+DATE:\s*(\d{8})', content)
+    if m:
+        raw = m.group(1)
+        return f"{raw[:4]}-{raw[4:6]}-{raw[6:8]}"
+    m = re.search(r'ACCEPTANCE-DATETIME:\s*(\d{14})', content)
+    if m:
+        raw = m.group(1)
+        return f"{raw[:4]}-{raw[4:6]}-{raw[6:8]}"
+    return ""
+
 
 def extract_main_10k_text(filepath: str) -> str:
     """
@@ -534,42 +550,41 @@ def split_sentences(text: str) -> list:
 # Deduplication
 # ============================================================
 
-def deduplicate_sentences(sentences: list) -> tuple:
+def deduplicate_sentences(sentences: list) -> list:
     """
     Remove exact and near-duplicate sentences.
-    
-    Returns:
-        (kept_sentences, dropped_exact, dropped_near)
+    Returns list of (sentence, is_exact_duplicate, is_near_duplicate) tuples.
+    All sentences are returned with flags so downstream can filter.
     """
-    kept = []
+    results = []
+    kept_texts = []
     kept_hashes = set()
-    dropped_exact = 0
-    dropped_near = 0
     
     for sent in sentences:
-        # Exact duplicate check
         sent_hash = hashlib.md5(sent.lower().encode()).hexdigest()
+        
         if sent_hash in kept_hashes:
-            dropped_exact += 1
+            results.append((sent, True, False))
             continue
         
         # Near-duplicate check against kept sentences
         is_near_dup = False
         sent_lower = sent.lower()
-        for kept_sent in kept[-50:]:  # Only check against last 50 (windowed)
+        for kept_sent in kept_texts[-50:]:
             ratio = _rapidfuzz.ratio(sent_lower, kept_sent.lower())
             if ratio > 90:
                 is_near_dup = True
                 break
         
         if is_near_dup:
-            dropped_near += 1
+            results.append((sent, False, True))
             continue
         
-        kept.append(sent)
+        results.append((sent, False, False))
+        kept_texts.append(sent)
         kept_hashes.add(sent_hash)
     
-    return kept, dropped_exact, dropped_near
+    return results
 
 
 # ============================================================
@@ -595,118 +610,121 @@ def match_ai_keywords(sentence: str) -> tuple:
 # Process One Filing
 # ============================================================
 
-def process_filing(ticker: str, accession: str, filing_dir: str, 
-                   company_info: dict = None) -> dict:
+def process_filing(ticker: str, accession: str, filing_dir: str,
+                   company_info: dict = None, cik_map: dict = None) -> list:
     """
-    Process a single 10-K filing:
-    1. Find and parse the main 10-K document
-    2. Extract MD&A section
-    3. Clean text
-    4. Split into sentences
-    5. Deduplicate
-    6. Match AI keywords
+    Process a single 10-K filing and return flat sentence-level records.
     
-    Returns dict with all professor-required fields.
+    Each record has ALL professor-required fields:
+    - firm-year identifiers: cik, gvkey, ticker, company_name, filing_date, fiscal_year, accession_number
+    - MD&A metadata: section_name, mdna_total_word_count, mdna_total_sentence_count, mdna_total_char_count
+    - sentence-level: sentence_id, sentence_order, sentence_raw, sentence_clean, sentence_word_count
+    - quality flags: is_exact_duplicate, is_near_duplicate, keep_sentence_flag
+    - AI candidate: ai_candidate_flag, ai_keyword_matched_terms
+    
+    Returns: list of dicts (one per sentence, including duplicates with flags)
     """
     # Find the main filing document
     doc_path = _find_primary_document(filing_dir)
     if not doc_path:
-        return {"error": "No primary document found", "ticker": ticker, "accession": accession}
+        return []
     
     # Extract text based on file type
     try:
         with open(doc_path, "r", encoding="utf-8", errors="ignore") as f:
             raw_content = f.read()
-    except Exception as e:
-        return {"error": f"File read error: {e}", "ticker": ticker, "accession": accession}
+    except Exception:
+        return []
     
     try:
-        # Determine if this is a full SGML submission or standalone HTML
         if '<SEC-DOCUMENT>' in raw_content or '<SEC-HEADER>' in raw_content:
-            # Full SGML submission — extract main 10-K document
             raw_text = extract_main_10k_text(doc_path)
         else:
             raw_text = raw_content
         
-        # Parse HTML if needed
         raw_prefix = raw_text.lstrip().lower()[:200]
         if any(tag in raw_prefix for tag in ['<html', '<!doctype', '<?xml', '<xbrl']):
             full_text = parse_html_text(raw_text)
         else:
             full_text = parse_plain_text(raw_text)
-        
-    except Exception as e:
-        return {"error": f"Parse error: {e}", "ticker": ticker, "accession": accession}
+    except Exception:
+        return []
     
     # Extract MD&A section
     mda_text = find_mda_section(full_text)
     if not mda_text:
-        mda_text = full_text  # Fallback: use full text
+        mda_text = full_text
     
     # Clean MD&A text
     cleaned_mda = _clean_mda_text(mda_text)
     
-    # Get company info
+    # Company info
     company_name = ""
     if company_info and ticker in company_info:
         company_name = company_info[ticker].get('name', '')
     
+    # Extract filing date from SGML header
+    filing_date = ""
+    if '<SEC-DOCUMENT>' in raw_content or '<SEC-HEADER>' in raw_content:
+        filing_date = _extract_filing_date_from_sgmml(doc_path)
+    
     # Extract fiscal year from accession number
     fiscal_year = _extract_filing_year(accession)
     
+    # Look up cik and gvkey
+    cik = ""
+    gvkey = ""
+    if cik_map and ticker in cik_map:
+        cik = cik_map[ticker].get('cik', '')
+        gvkey = cik_map[ticker].get('gvkey', '')
+    
+    # MD&A metadata
+    mdna_word_count = len(cleaned_mda.split())
+    
     # Split into sentences
     all_sentences = split_sentences(cleaned_mda)
+    mdna_sentence_count_raw = len(all_sentences)
     
-    # Deduplicate
-    kept_sentences, dropped_exact, dropped_near = deduplicate_sentences(all_sentences)
+    # Deduplicate (returns all sentences with flags)
+    deduped = deduplicate_sentences(all_sentences)
+    mdna_sentence_count = sum(1 for _, is_exact, is_near in deduped if not is_exact and not is_near)
     
-    # Build sentence-level records
-    sentence_records = []
-    total_ai_sentences = 0
-    total_ai_keywords = set()
-    
-    for idx, sent in enumerate(kept_sentences):
+    # Build flat sentence records
+    records = []
+    for idx, (sent, is_exact_dup, is_near_dup) in enumerate(deduped):
         is_ai_candidate, matched_terms = match_ai_keywords(sent)
+        keep = not is_exact_dup and not is_near_dup
         
-        if is_ai_candidate:
-            total_ai_sentences += 1
-            total_ai_keywords.update(matched_terms)
-        
-        sentence_records.append({
+        records.append({
+            # Firm-year identifiers
+            "cik": cik,
+            "gvkey": gvkey,
+            "ticker": ticker,
+            "company_name": company_name,
+            "filing_date": filing_date,
+            "fiscal_year": fiscal_year,
+            "accession_number": accession,
+            # MD&A metadata
+            "section_name": "Item 7 - MD&A",
+            "mdna_total_word_count": mdna_word_count,
+            "mdna_total_sentence_count": mdna_sentence_count,
+            "mdna_total_char_count": len(cleaned_mda),
+            # Sentence-level
             "sentence_id": f"{ticker}_{accession}_{idx:04d}",
             "sentence_order": idx,
             "sentence_raw": sent[:500],
             "sentence_clean": _normalize_spaces(sent)[:500],
             "sentence_word_count": len(sent.split()),
+            # Quality flags
+            "is_exact_duplicate": is_exact_dup,
+            "is_near_duplicate": is_near_dup,
+            "keep_sentence_flag": keep,
+            # AI candidate
             "ai_candidate_flag": is_ai_candidate,
-            "ai_keyword_matched_terms": matched_terms if is_ai_candidate else [],
+            "ai_keyword_matched_terms": matched_terms,
         })
     
-    return {
-        # Firm-year identifiers
-        "ticker": ticker,
-        "accession": accession,
-        "fiscal_year": fiscal_year,
-        "company_name": company_name,
-        
-        # MD&A metadata
-        "mdna_total_word_count": len(cleaned_mda.split()),
-        "mdna_total_sentence_count": len(kept_sentences),
-        "mdna_total_char_count": len(cleaned_mda),
-        
-        # Sentence-level data
-        "sentences": sentence_records,
-        
-        # AI summary
-        "total_ai_sentences": total_ai_sentences,
-        "total_ai_keywords_matched": list(total_ai_keywords),
-        
-        # Quality control
-        "n_dropped_exact_duplicates": dropped_exact,
-        "n_dropped_near_duplicates": dropped_near,
-        "n_sentences_kept": len(kept_sentences),
-        "n_sentences_raw": len(all_sentences),
-    }
+    return records
 
 
 def _find_primary_document(filing_dir: str) -> str | None:
@@ -799,6 +817,22 @@ def main():
                 'sector': str(row.get('GICS Sector', '')),
             }
     
+    # Load CIK-GVKEY crosswalk for cik/gvkey fields
+    cik_map = {}
+    cik_gvkey_path = BASE.parent.parent / "NLP_test" / "data" / "wrds" / "cik_gvkey_crosswalk.csv"
+    if cik_gvkey_path.exists():
+        import pandas as pd
+        cwm = pd.read_csv(cik_gvkey_path, dtype={'cik': str})
+        cwm['cik'] = cwm['cik'].str.zfill(10)
+        for _, row in cwm.iterrows():
+            tic = str(row.get('tic', '')).strip()
+            if tic and tic != 'nan':
+                cik_map[tic] = {
+                    'cik': str(row['cik']),
+                    'gvkey': str(row.get('gvkey', '')),
+                }
+        print(f"  Loaded CIK-GVKEY crosswalk: {len(cik_map)} tickers")
+    
     # Determine which tickers to process
     all_tickers = sorted(os.listdir(FILING_ROOT))
     if args.tickers:
@@ -819,6 +853,7 @@ def main():
     # Stats
     total_filings = 0
     total_sentences = 0
+    total_kept = 0
     total_ai_sentences = 0
     total_ai_filings = 0
     total_errors = 0
@@ -832,7 +867,7 @@ def main():
     # Ensure output directory exists
     OUTPUT_FILE.parent.mkdir(parents=True, exist_ok=True)
     
-    mode = "a" if (args.resume and CHECKPOINT_FILE.exists()) else "w"
+    mode = "a" if (args.resume and CHECKPOINT_FILE.exists() and OUTPUT_FILE.exists()) else "w"
     
     with open(OUTPUT_FILE, mode) as out:
         for i, ticker in enumerate(all_tickers):
@@ -845,52 +880,42 @@ def main():
                     continue
                 
                 filing_dir = str(ticker_dir / accession)
-                result = process_filing(ticker, accession, filing_dir, company_info)
+                records = process_filing(ticker, accession, filing_dir, company_info, cik_map)
                 
-                if "error" in result:
+                if not records:
                     total_errors += 1
                     if total_errors <= 5:
-                        print(f"  ERROR {ticker} {accession}: {result['error']}")
+                        print(f"  ERROR {ticker} {accession}: No records produced")
                     continue
                 
-                # Write filing-level summary
-                filing_summary = {
-                    "ticker": result["ticker"],
-                    "accession": result["accession"],
-                    "fiscal_year": result["fiscal_year"],
-                    "company_name": result["company_name"],
-                    "mdna_total_word_count": result["mdna_total_word_count"],
-                    "mdna_total_sentence_count": result["mdna_total_sentence_count"],
-                    "mdna_total_char_count": result["mdna_total_char_count"],
-                    "total_ai_sentences": result["total_ai_sentences"],
-                    "total_ai_keywords_matched": result["total_ai_keywords_matched"],
-                    "n_dropped_exact_duplicates": result["n_dropped_exact_duplicates"],
-                    "n_dropped_near_duplicates": result["n_dropped_near_duplicates"],
-                    "n_sentences_kept": result["n_sentences_kept"],
-                    "n_sentences_raw": result["n_sentences_raw"],
-                    "sentences": result["sentences"],
-                }
-                out.write(json.dumps(filing_summary, ensure_ascii=False) + "\n")
+                # Write flat sentence records (one JSON line per sentence)
+                for rec in records:
+                    out.write(json.dumps(rec, ensure_ascii=False) + "\n")
                 out.flush()
                 
-                # Update stats
+                # Stats
                 total_filings += 1
-                total_sentences += result["mdna_total_sentence_count"]
-                total_ai_sentences += result["total_ai_sentences"]
-                if result["total_ai_sentences"] > 0:
+                total_sentences += len(records)
+                kept = sum(1 for r in records if r['keep_sentence_flag'])
+                total_kept += kept
+                dropped_exact = sum(1 for r in records if r['is_exact_duplicate'])
+                dropped_near = sum(1 for r in records if r['is_near_duplicate'])
+                total_dropped_exact += dropped_exact
+                total_dropped_near += dropped_near
+                ai_count = sum(1 for r in records if r['ai_candidate_flag'] and r['keep_sentence_flag'])
+                total_ai_sentences += ai_count
+                if ai_count > 0:
                     total_ai_filings += 1
-                total_dropped_exact += result["n_dropped_exact_duplicates"]
-                total_dropped_near += result["n_dropped_near_duplicates"]
                 
                 done.add((ticker, accession))
                 
-                # Progress every 50 filings or if AI found
+                # Progress every 50 filings
                 if total_filings % 50 == 0:
                     elapsed = time.time() - start_time
                     rate = total_filings / max(elapsed, 1) * 60
-                    avg_sent = total_sentences / max(total_filings, 1)
+                    avg_sent = total_kept / max(total_filings, 1)
                     print(f"  [{total_filings} done | {rate:.0f}/min | "
-                          f"avg {avg_sent:.0f} sent/filing | "
+                          f"avg {avg_sent:.0f} kept sent/filing | "
                           f"{total_ai_filings} AI filings | "
                           f"{total_ai_sentences} AI sentences | "
                           f"dropped exact:{total_dropped_exact} near:{total_dropped_near}]")
@@ -898,19 +923,20 @@ def main():
                 # Checkpoint every 50 filings
                 if total_filings % 50 == 0:
                     with open(CHECKPOINT_FILE, 'w') as cf:
-                        json.dump(list(done), cf)
+                        json.dump([list(x) for x in done], cf)
     
     # Final checkpoint
     with open(CHECKPOINT_FILE, 'w') as cf:
-        json.dump(list(done), cf)
+        json.dump([list(x) for x in done], cf)
     
     elapsed = time.time() - start_time
     
     print(f"\n{'='*70}")
     print(f"Extraction Complete!")
     print(f"  Total filings processed: {total_filings}")
-    print(f"  Total sentences (kept): {total_sentences:,}")
-    print(f"  Total AI sentences: {total_ai_sentences:,}")
+    print(f"  Total sentences (all, incl. dups): {total_sentences:,}")
+    print(f"  Sentences kept (after dedup): {total_kept:,}")
+    print(f"  Total AI sentences (kept only): {total_ai_sentences:,}")
     print(f"  Filings with AI mentions: {total_ai_filings}")
     print(f"  Errors: {total_errors}")
     print(f"  Dropped exact duplicates: {total_dropped_exact:,}")
