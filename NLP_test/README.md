@@ -1,4 +1,7 @@
-# S&P 500 AI Disclosure Analysis — NLP Test
+> **DEPRECATED** — This pipeline has been superseded by the complete rewrite in `../NLP_NEW/`.
+> See `DEPRECATED.md` for details on what changed and how to migrate.
+
+# S&P 500 AI Disclosure Analysis — NLP Test (Legacy)
 
 ## Overview
 

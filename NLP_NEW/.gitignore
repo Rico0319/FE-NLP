@@ -1,9 +1,6 @@
 # Secrets — NEVER commit
 .env
 
-# Raw SEC filings (87GB, too large for git)
-sec_filings_full/
-
 # Python
 __pycache__/
 *.pyc
@@ -20,5 +17,5 @@ NLP-env/
 .idea/
 
 # Checkpoint files (temporary)
-.classification_checkpoint
 .extract_mda_checkpoint
+.classification_checkpoint
