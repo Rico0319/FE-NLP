@@ -60,11 +60,11 @@ SENTENCE_OUTPUT_PARQUET = os.path.join(OUTPUT_DIR, "sentence_level_with_ai_label
 FIRMYEAR_OUTPUT_CSV = os.path.join(OUTPUT_DIR, "firm_year_ai_disclosure_measures.csv")
 SUMMARY_OUTPUT_CSV = os.path.join(OUTPUT_DIR, "run_summary.csv")
 
-# API config — local OpenAI-compatible server (no auth required)
-MODEL_NAME = os.getenv("MODEL_NAME", "google/gemma-4-26b-a4b")
-API_KEY = os.getenv("OPENAI_API_KEY", "not-needed")
-BASE_URL = os.getenv("OPENAI_BASE_URL", "http://100.69.117.83:1234/api/v1/")
-print(f"[Config] Local API server: model={MODEL_NAME}, base_url={BASE_URL}")
+# API config — generic OpenAI-compatible provider
+MODEL_NAME = os.getenv("MODEL_NAME", "")
+API_KEY = os.getenv("OPENAI_API_KEY", "").strip()
+BASE_URL = os.getenv("OPENAI_BASE_URL", "").strip()
+print(f"[Config] Generic API: model={MODEL_NAME}, base_url={BASE_URL}")
 
 # Concurrency & rate limiting
 MAX_WORKERS = int(os.getenv("MAX_WORKERS", "8"))
@@ -100,11 +100,17 @@ signal.signal(signal.SIGTERM, _signal_handler)
 # ============================================================
 
 def _validate_setup() -> None:
-    """Validate that essential config and input file are present."""
-    if not MODEL_NAME:
-        raise ValueError("MODEL_NAME is not set.")
+    """Validate that API key and essential config are present."""
+    if not API_KEY:
+        raise ValueError(
+            "OPENAI_API_KEY is not set.\n"
+            "Please set it in NLP/.env or as an environment variable.\n"
+            "Never commit API keys to git."
+        )
     if not BASE_URL:
         raise ValueError("OPENAI_BASE_URL is not set.")
+    if not MODEL_NAME:
+        raise ValueError("MODEL_NAME is not set.")
     if not os.path.isfile(INPUT_PATH):
         raise FileNotFoundError(f"Input file not found: {INPUT_PATH}")
 
@@ -123,8 +129,6 @@ def _get_client() -> OpenAI:
             max_retries=0,  # we handle retries manually for better control
         )
     return _thread_local.client
-
-
 # ============================================================
 # 1. AI seed keyword screen
 # ============================================================
