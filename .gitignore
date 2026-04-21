@@ -1,2 +1,21 @@
 # personal todo list
 ricos_todo.md
+
+# Secrets
+.env
+*.env
+!*.env.example
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Large output files
+NLP/b_group_outputs/sentence_level_with_ai_labels.csv
+NLP/b_group_outputs/sentence_level_with_ai_labels.parquet
+
+# Runtime artifacts / checkpoints
+NLP/b_group_outputs/.classification_checkpoint.json
+NLP/b_group_outputs/sentence_classification_cache.jsonl
+*.log
