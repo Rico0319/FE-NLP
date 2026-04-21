@@ -51,8 +51,8 @@ load_dotenv(os.path.join(os.path.dirname(__file__), ".env"))
 # 0. PATHS / SETTINGS
 # ============================================================
 
-INPUT_PATH = "/home/ricoz/econ_lab/FE-NLP/Data_Cleaning_NEW/data/intermediate/mdna_sentence_master.jsonl"
-OUTPUT_DIR = "b_group_outputs"
+INPUT_PATH = os.getenv("INPUT_PATH", "mdna_sentence_master.jsonl")
+OUTPUT_DIR = os.getenv("OUTPUT_DIR", "b_group_outputs")
 CACHE_PATH = os.path.join(OUTPUT_DIR, "sentence_classification_cache.jsonl")
 CHECKPOINT_PATH = os.path.join(OUTPUT_DIR, ".classification_checkpoint.json")
 SENTENCE_OUTPUT_CSV = os.path.join(OUTPUT_DIR, "sentence_level_with_ai_labels.csv")
