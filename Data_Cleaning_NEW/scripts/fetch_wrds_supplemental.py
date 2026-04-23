@@ -34,8 +34,8 @@ if not GVLIST_PATH.exists():
     print(f"[ERROR] {GVLIST_PATH} not found.")
     sys.exit(1)
 
-gvkeys = pd.read_csv(GVLIST_PATH)["gvkey"].astype(str).tolist()
-print(f"        {len(gvkeys):,} gvkeys to query.")
+gvkeys = pd.read_csv(GVLIST_PATH)["gvkey"].astype(str).str.zfill(6).tolist()
+print(f"        {len(gvkeys):,} gvkeys to query (zero-padded for WRDS varchar).")
 
 # ------------------------------------------------------------------
 # 2. Build and run WRDS query
