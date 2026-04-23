@@ -229,12 +229,15 @@ out_cols = [
     "capex_to_assets",
     "intangibles_to_assets",
     "tobin_q",
+    # Market data (for valuation regressions)
+    "prcc_f",
+    "csho",
     # Additional
     "cash_ratio",
     "ppe_ratio",
     "log_emp",
     # Raw values (for transparency / auditing)
-    "at", "ni", "lt", "sale", "xrd", "capx", "intan", "prcc_f", "csho",
+    "at", "ni", "lt", "sale", "xrd", "capx", "intan",
 ]
 
 # Keep only columns that exist

@@ -22,6 +22,8 @@ File: `control_variables.csv`
 | `capex_to_assets` | Capital Expenditures / Total Assets | capx / at |
 | `intangibles_to_assets` | Intangible Assets / Total Assets | intan / at |
 | `tobin_q` | (Mkt Equity + Book Liabilities) / Book Assets | (prcc_f*csho + lt) / at |
+| `prcc_f` | **Fiscal year-end stock price** (primary from Compustat `prcc_f`, supplemented by CRSP) | comp.funda / CRSP |
+| `csho` | Common shares outstanding (millions) | comp.funda |
 | `cash_ratio` | Cash / Total Assets | che / at |
 | `ppe_ratio` | PP&E / Total Assets | ppent / at |
 | `log_emp` | ln(Employees) | emp |
@@ -41,8 +43,9 @@ All three supplemental variables have now been downloaded from WRDS and merged:
 | `capex_to_assets` | 98.9% | `capx` from `comp.funda` |
 | `intangibles_to_assets` | 99.0% | `intan` from `comp.funda` |
 | `tobin_q` | **91.0%** | `prcc_f` from `comp.funda` + **CRSP supplemental** (67 prices filled) |
+| `prcc_f` | **91.0%** | Fiscal year-end close; missing values filled from CRSP when within 90 days |
 
-The remaining ~9% missing `tobin_q` is due to some firms lacking a fiscal year-end stock price in both Compustat and CRSP (often non-US or delisted firms). CRSP prices were merged only when within 90 days of fiscal year-end. For regression, use `dropna()` on the variables you need.
+The remaining ~8% missing `prcc_f` / ~9% missing `tobin_q` is due to some firms lacking a fiscal year-end stock price in both Compustat and CRSP (often non-US or delisted firms). For regression, use `dropna()` on the variables you need.
 
 **Regression-ready sample sizes** (all core vars non-null):
 - All 8 core controls: ~20,087 firm-years (~4,274 unique firms)
