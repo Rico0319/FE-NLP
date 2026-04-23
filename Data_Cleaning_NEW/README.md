@@ -91,7 +91,8 @@ Requires `git-lfs` installed to clone: `git lfs install`
 **Step 3: Control Variables** ✅ **DONE**
 - Compustat fundamentals pulled (`log_assets`, `ROA`, `leverage`, `sales_growth`, `rd_to_assets`)
 - Supplemental WRDS pull for `capx`, `intan`, `prcc_f` completed and merged
-- `capex_to_assets`, `intangibles_to_assets`, `tobin_q` now 90–99% complete
+- CRSP supplemental prices merged (67 prices within 90 days of fiscal year-end)
+- `capex_to_assets`, `intangibles_to_assets` now 98–99% complete; `tobin_q` now 91.0% complete
 - Full regression sample: ~20K firm-years with all core controls
 
 **Step 4: Master Panel & Regressions** — Merge AI scores with controls, run valuation models.

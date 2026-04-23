@@ -109,6 +109,42 @@ else:
         df[c] = np.nan
 
 # ------------------------------------------------------------------
+# 2b. Merge CRSP prices for missing prcc_f (if available)
+# ------------------------------------------------------------------
+CRSP_PATH = PROJECT_ROOT / "Data_Cleaning_NEW" / "data" / "raw" / "crsp_prices_supplemental.csv"
+if CRSP_PATH.exists():
+    print("[2b/5] Merging CRSP supplemental prices for missing prcc_f...")
+    crsp = pd.read_csv(CRSP_PATH, low_memory=False)
+    crsp["gvkey"] = crsp["gvkey"].astype(str).str.zfill(6)
+    crsp["fyear"] = pd.to_numeric(crsp["fyear"], errors="coerce").astype("Int64")
+    crsp["crsp_prc"] = pd.to_numeric(crsp["crsp_prc"], errors="coerce")
+    crsp["days_diff"] = pd.to_numeric(crsp["days_diff"], errors="coerce")
+
+    # Only use reliable prices: non-null and within 90 days of fiscal year-end
+    crsp = crsp[
+        crsp["crsp_prc"].notna()
+        & (crsp["days_diff"] <= 90)
+    ].copy()
+
+    if not crsp.empty:
+        # For merge, keep only gvkey, fyear, crsp_prc
+        crsp_merge = crsp[["gvkey", "fyear", "crsp_prc", "crsp_date", "days_diff"]].drop_duplicates(
+            subset=["gvkey", "fyear"], keep="first"
+        )
+        n_before = df["prcc_f"].notna().sum()
+        df = df.merge(crsp_merge, on=["gvkey", "fyear"], how="left")
+        # Fill missing prcc_f with CRSP price
+        mask = df["prcc_f"].isna() & df["crsp_prc"].notna()
+        df.loc[mask, "prcc_f"] = df.loc[mask, "crsp_prc"]
+        n_after = df["prcc_f"].notna().sum()
+        print(f"        Filled {n_after - n_before:,} missing prcc_f from CRSP")
+        print(f"        prcc_f coverage: {n_after:,} / {len(df):,} ({n_after/len(df)*100:.1f}%)")
+    else:
+        print("        No reliable CRSP prices to merge.")
+else:
+    print("[2b/5] CRSP supplemental prices not found.")
+
+# ------------------------------------------------------------------
 # 3. Compute control variables
 # ------------------------------------------------------------------
 print("[3/5] Computing control variables...")

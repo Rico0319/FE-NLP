@@ -40,13 +40,13 @@ All three supplemental variables have now been downloaded from WRDS and merged:
 |----------|----------|-------|
 | `capex_to_assets` | 98.9% | `capx` from `comp.funda` |
 | `intangibles_to_assets` | 99.0% | `intan` from `comp.funda` |
-| `tobin_q` | 90.9% | `prcc_f` from `comp.funda` |
+| `tobin_q` | **91.0%** | `prcc_f` from `comp.funda` + **CRSP supplemental** (67 prices filled) |
 
-The remaining ~9% missing `tobin_q` is due to some firms lacking a fiscal year-end stock price in Compustat (often non-US or delisted firms). For regression, use `dropna()` on the variables you need.
+The remaining ~9% missing `tobin_q` is due to some firms lacking a fiscal year-end stock price in both Compustat and CRSP (often non-US or delisted firms). CRSP prices were merged only when within 90 days of fiscal year-end. For regression, use `dropna()` on the variables you need.
 
 **Regression-ready sample sizes** (all core vars non-null):
-- All 8 core controls: ~20,058 firm-years (~4,268 unique firms)
-- Minimum set (log_assets, ROA, leverage, tobin_q): ~54,952 firm-years (~9,949 unique firms)
+- All 8 core controls: ~20,087 firm-years (~4,274 unique firms)
+- Minimum set (log_assets, ROA, leverage, tobin_q): ~55,019 firm-years (~9,964 unique firms)
 
 **Critical fix:** WRDS `comp.funda.gvkey` is a `VARCHAR` — queries must use zero-padded 6-digit strings (e.g., `"001004"`, not `"1004"`). The first pull matched only 3,295 firms because of this.
 
