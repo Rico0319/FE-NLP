@@ -80,7 +80,7 @@ Requires `git-lfs` installed to clone: `git lfs install`
 
 ---
 
-## Next Steps (TODO)
+## Next Steps
 
 **Step 2: AI Classification** — Update from binary (substantive/generic) to 4-class:
 - 0: not_meaningful_ai_mention
@@ -88,9 +88,13 @@ Requires `git-lfs` installed to clone: `git lfs install`
 - 2: substantive_ai_implementation
 - 3: substantive_ai_risk_governance
 
-**Step 3: Master Panel** — Merge AI data with Compustat, calculate intensity/share/net variables, financial controls, Tobin's Q.
+**Step 3: Control Variables** ✅ **DONE**
+- Compustat fundamentals pulled (`log_assets`, `ROA`, `leverage`, `sales_growth`, `rd_to_assets`)
+- Supplemental WRDS pull for `capx`, `intan`, `prcc_f` completed and merged
+- `capex_to_assets`, `intangibles_to_assets`, `tobin_q` now 90–99% complete
+- Full regression sample: ~20K firm-years with all core controls
 
-**Step 4: Regressions** — Valuation models, post-ChatGPT heterogeneity, future outcomes, return predictability.
+**Step 4: Master Panel & Regressions** — Merge AI scores with controls, run valuation models.
 
 ---
 

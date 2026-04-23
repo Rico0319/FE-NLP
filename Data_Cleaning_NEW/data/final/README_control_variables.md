@@ -32,17 +32,23 @@ File: `control_variables.csv`
 - **Unique firms**: ~10,497
 - **Years**: 2018–2025
 
-## Missing Data
+## Missing Data (Post-WRDS Supplemental Pull)
 
-Three variables are currently **100% missing** because they require a
-supplemental WRDS pull:
+All three supplemental variables have now been downloaded from WRDS and merged:
 
-1. `capex_to_assets` → needs `capx`
-2. `intangibles_to_assets` → needs `intan`
-3. `tobin_q` → needs `prcc_f`
+| Variable | Coverage | Notes |
+|----------|----------|-------|
+| `capex_to_assets` | 98.9% | `capx` from `comp.funda` |
+| `intangibles_to_assets` | 99.0% | `intan` from `comp.funda` |
+| `tobin_q` | 90.9% | `prcc_f` from `comp.funda` |
 
-See `../raw/README_WRDS_query.md` for the exact SQL query to download
-these from WRDS.
+The remaining ~9% missing `tobin_q` is due to some firms lacking a fiscal year-end stock price in Compustat (often non-US or delisted firms). For regression, use `dropna()` on the variables you need.
+
+**Regression-ready sample sizes** (all core vars non-null):
+- All 8 core controls: ~20,058 firm-years (~4,268 unique firms)
+- Minimum set (log_assets, ROA, leverage, tobin_q): ~54,952 firm-years (~9,949 unique firms)
+
+**Critical fix:** WRDS `comp.funda.gvkey` is a `VARCHAR` — queries must use zero-padded 6-digit strings (e.g., `"001004"`, not `"1004"`). The first pull matched only 3,295 firms because of this.
 
 ## Pre-processing Recommendation
 

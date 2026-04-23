@@ -23,7 +23,7 @@ SELECT a.gvkey,
 FROM   comp.funda a
 WHERE  a.gvkey IN (
            SELECT DISTINCT gvkey
-           FROM   your_firm_list   /* or use the gvkeys from control_variables.csv */
+           FROM   your_firm_list   /* zero-padded 6-char strings, e.g. '001004' */
        )
    AND a.fyear BETWEEN 2018 AND 2025
    AND a.indfmt = 'INDL'
@@ -32,6 +32,10 @@ WHERE  a.gvkey IN (
    AND a.consol = 'C'
 ORDER BY a.gvkey, a.fyear;
 ```
+
+> ⚠️ **CRITICAL:** `comp.funda.gvkey` is a `VARCHAR`. If you pass integers (e.g. `1004`)
+> instead of zero-padded strings (`'001004'`), the query will silently return **zero rows**
+> for most firms. Always `str.zfill(6)` before querying.
 
 ## After Download
 
