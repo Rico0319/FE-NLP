@@ -19,3 +19,8 @@ NLP/b_group_outputs/sentence_level_with_ai_labels.parquet
 NLP/b_group_outputs/.classification_checkpoint.json
 NLP/b_group_outputs/sentence_classification_cache.jsonl
 *.log
+
+# 20260426 session archive and large data
+20260426/archive/
+20260426/希望是真的nlp/mdna_sentence_master.jsonl
+20260426/希望是真的nlp/nlp_outputs/
