@@ -126,17 +126,3 @@ python scripts/fetch_additional_controls.py
 - **CRSP Momentum**: 12-month cumulative return (months t-12 to t-1), computed from CRSP monthly returns file (`msf`).
 - **Industry Fixed Effects**: `sic` (4-digit), `naics` (6-digit), `gsubind` (GICS sub-industry), and `sector` (11 GICS sectors) are all available for industry FE specifications.
 
----
-
-## Contributors
-
-- **Rico Zhu** — Control variables, WRDS data integration, repo maintenance
-- **Group A** — LLM-based AI classification pipeline
-- **Group B** — Sentiment analysis & NLP metrics (`希望是真的nlp/`)
-- **Regression Team** — Regression design & estimation (pending)
-
----
-
-## Citation
-
-If using this dataset or code, please cite the authors and acknowledge WRDS data access.
