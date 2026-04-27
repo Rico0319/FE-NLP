@@ -1,3 +1,70 @@
+# 20260427 Update
+
+数据清洗已全部完成！以下是最终交付内容总结：
+
+---
+
+## 交付文件
+
+| 文件 | 说明 |
+|------|------|
+| `20260426/firm_year_panel_regression_ready.csv` | **最终清洗后的面板数据**（3,315行 × 107列） |
+| `20260426/README_PANEL.md` | 数据说明文档 |
+| `20260426/sample_regressions.do` | Stata 回归示例代码 |
+| `20260426/sample_regressions.py` | Python 回归示例代码 |
+
+---
+
+## 处理内容
+
+### 1. 空行问题 ✅
+- 原数据有23个FY2025行缺少control变量（BF-B、CAG、GIS、NKE等非12月财年公司）
+- **原因**：这些公司的FY2025财年结束于2025年4-5月，Compustat数据尚未更新
+- **处理**：已删除这23行，保留3,315个完整观测
+
+### 2. ROE极端值 ✅
+- 原始ROE范围：[-65.36, 388.70]，68个极端值
+- **原因**：ceq（common equity）极小或负数（如股票回购导致），会计上合理
+- **处理**：新增 `ROE_winsorized` 列（1%/99% winsorize），范围：[-3.10, 3.65]
+- 原始ROE保留供参考
+
+### 3. 去重 ✅
+- **Dual-class shares**：FOX/FOXA、GOOG/GOOGL、NWS/NWSA → 保留有CIK的版本（FOXA、GOOGL、NWSA）
+- **Multi-accession cases**：
+  - CRM FY2022：保留 `0001108524-22-000013`（2022-03-11 filing）
+  - SMCI FY2019：保留 `0001375365-19-000079`（2019-12-19 filing）
+  - SMCI FY2025：保留 `0001375365-25-000027`（2025-08-28 filing）
+
+### 4. 删除重复列 ✅
+保留了优先版本，删除了：fyear、tic、conm、gvkey_ctrl、cik_ctrl、debt_to_assets、ppe_intensity、cash_holdings、future_operating_performance、log_emp2
+
+### 5. 主键设置 ✅
+- `gvkey` + `fiscal_year` 唯一
+- 0 duplicates
+
+---
+
+## 数据概况
+
+- **公司数**：486家
+- **年份**：2019–2025
+- **AI提及率**：89.1% 的公司至少提到AI
+- **实质性AI披露率**：85.4%
+- **面板平衡**：439家公司有完整7年数据
+
+---
+
+## 给组员的说明
+
+这份数据现在可以直接用于regression：
+- 主键：`gvkey` + `fiscal_year`
+- 回归时用 `ROE_winsorized` 避免极端值影响
+- 行业固定效应可用 `sector`、`sic`、`naics` 或 `gsubind`
+- 年份固定效应用 `fiscal_year`
+
+我还附了Stata和Python的sample regression code，可以直接参考。
+
+
 # 20260426 Session — Firm-Year Panel Data Dictionary
 
 This folder contains the final firm-year panel used for regression analysis, plus the scripts that built it.
