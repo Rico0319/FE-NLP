@@ -8,7 +8,7 @@
 
 | 文件 | 说明 |
 |------|------|
-| `20260426/firm_year_panel_regression_ready.csv` | **最终清洗后的面板数据**（3,315行 × 107列） |
+| `20260426/firm_year_panel_regression_ready.csv` | **最终清洗后的面板数据**（3,315行 × 129列） |
 | `20260426/README_PANEL.md` | 数据说明文档 |
 | `20260426/sample_regressions.do` | Stata 回归示例代码 |
 | `20260426/sample_regressions.py` | Python 回归示例代码 |
@@ -34,13 +34,48 @@
   - CRM FY2022：保留 `0001108524-22-000013`（2022-03-11 filing）
   - SMCI FY2019：保留 `0001375365-19-000079`（2019-12-19 filing）
   - SMCI FY2025：保留 `0001375365-25-000027`（2025-08-28 filing）
+- **重复行修复**：修复了 `fix_fiscal_year_and_winsorize.py` 脚本因 input==output 导致 dual-class shares（FOXA、GOOGL、NWSA）被重复合并4次的问题。已去重，从3,378行恢复为3,315行。
 
 ### 4. 删除重复列 ✅
 保留了优先版本，删除了：fyear、tic、conm、gvkey_ctrl、cik_ctrl、debt_to_assets、ppe_intensity、cash_holdings、future_operating_performance、log_emp2
 
 ### 5. 主键设置 ✅
-- `gvkey` + `fiscal_year` 唯一
+- `ticker` + `fiscal_year` 唯一
 - 0 duplicates
+
+### 6. Fiscal Year 对齐修复 ✅
+- **问题**：NLP的 `fiscal_year` 是 filing year（如2019年3月提交的10-K），但Compustat的 `fyear` 是实际财年（如2020年1月结束的FY）。对于非12月财年结束的公司，两者相差1年。
+- **修复**：根据 `datadate` 月份判断：若 datadate 在1-5月，则 NLP fiscal_year + 1 才对应 Compustat fyear。重新 merge controls，确保 controls 和 future variables 与正确的财年对齐。
+- **受影响公司**：WMT、NKE、BF-B、TGT 等非12月财年结束的公司。
+
+### 7. Winsorization ✅
+对以下变量在1%/99%分位数进行了winsorize，新增 `_winsorized` 列：
+- `tobin_q_winsorized`
+- `sales_growth_winsorized`
+- `future_sales_growth_winsorized`
+- `future_earnings_growth_winsorized`
+- `price_to_earnings_winsorized`
+- `leverage_winsorized`
+- `book_to_market_winsorized`
+- `momentum_12m_winsorized`
+- `ROE_winsorized`
+
+### 8. Sample Flags ✅
+新增两个0/1 sample indicator，用于统一回归样本：
+- `sample_valuation` = 1：该行可用于 Tobin's Q regression（非缺失 tobin_q_winsorized + AI disclosure变量 + baseline controls）
+- `sample_future_performance` = 1：该行可用于 future performance regression（非缺失 future_ROA/future_sales_growth_winsorized/future_earnings_growth_winsorized + AI disclosure变量 + baseline controls）
+- 2025年 fiscal_year 的 `sample_future_performance` = 0，因为2026年数据尚未可得。
+
+### 9. Post-AI Indicator ✅
+- `post_ai` = 1 if fiscal_year >= 2023（ChatGPT/GenAI boom 之后）
+- `post_ai` = 0 if fiscal_year <= 2022（之前）
+- 用途：检验 AI disclosure 在2023年后是否对 firm valuation / future performance 有更强关系。
+
+### 10. Disclosure Dummies ✅
+- `has_ai_candidate` = 1 if `n_ai_candidate_sentences > 0`
+- `has_generic_ai` = 1 if `n_generic_ai_disclosure_sentences > 0`
+- `has_substantive_ai` = 1 if `n_substantive_ai_disclosure_sentences > 0`
+- 覆盖率：89.1% / 81.5% / 85.4%
 
 ---
 
@@ -57,10 +92,12 @@
 ## 给组员的说明
 
 这份数据现在可以直接用于regression：
-- 主键：`gvkey` + `fiscal_year`
+- 主键：`ticker` + `fiscal_year`
 - 回归时用 `ROE_winsorized` 避免极端值影响
 - 行业固定效应可用 `sector`、`sic`、`naics` 或 `gsubind`
 - 年份固定效应用 `fiscal_year`
+- 检验 GenAI boom 效应用 `post_ai × AI disclosure` 交互项
+- 样本筛选用 `sample_valuation == 1` 或 `sample_future_performance == 1`
 
 我还附了Stata和Python的sample regression code，可以直接参考。
 
@@ -278,6 +315,26 @@ These are **predicted future values** from sell-side analyst consensus (IBES). `
 | `dividend_yield` | Dividends / market cap | `dvc / mkt_cap` |
 | `tax_rate` | Effective tax rate | `txt / pi` (capped at 0 when pre-tax income < 0) |
 
+### 16. Sample Flags
+
+| Column | Description |
+|--------|-------------|
+| `sample_valuation` | `=1` if row can be used for Tobin's Q regression (non-missing `tobin_q_winsorized` + AI disclosure vars + baseline controls) |
+| `sample_future_performance` | `=1` if row can be used for future performance regression (non-missing `future_ROA`/`future_sales_growth_winsorized`/`future_earnings_growth_winsorized` + AI disclosure vars + baseline controls) |
+
+**Note:** FY2025 rows have `sample_future_performance = 0` because FY2026 data is not yet available.
+
+### 17. Post-AI & Disclosure Dummies
+
+| Column | Description |
+|--------|-------------|
+| `post_ai` | `=1` if fiscal_year >= 2023 (post-ChatGPT/GenAI boom), `=0` if <= 2022 |
+| `has_ai_candidate` | `=1` if `n_ai_candidate_sentences > 0` |
+| `has_generic_ai` | `=1` if `n_generic_ai_disclosure_sentences > 0` |
+| `has_substantive_ai` | `=1` if `n_substantive_ai_disclosure_sentences > 0` |
+
+**Usage:** Use `post_ai × AI_disclosure` interaction terms to test whether AI disclosure effects strengthened after the GenAI boom.
+
 ---
 
 ## Coverage Summary
@@ -291,6 +348,9 @@ These are **predicted future values** from sell-side analyst consensus (IBES). `
 | Analyst forecasts (`fy1_*`, `fy2_*`) | 75–85% | IBES |
 | CRSP momentum / volatility | 80% | CRSP |
 | Supplemental ratios (margins, liquidity, etc.) | 80–99% | Compustat |
+| Winsorized variables (`*_winsorized`) | Same as raw | Post-processed |
+| Sample flags (`sample_valuation`, `sample_future_performance`) | 100% | Post-processed |
+| Post-AI & dummies (`post_ai`, `has_*`) | 100% | Post-processed |
 
 ---
 
@@ -301,6 +361,8 @@ These are **predicted future values** from sell-side analyst consensus (IBES). `
 | `scripts/merge_controls.py` | Merges core Compustat controls into the NLP panel |
 | `scripts/fetch_ibes_forecasts.py` | Pulls IBES analyst EPS forecasts from WRDS |
 | `scripts/fetch_additional_controls.py` | Pulls supplemental ratios (margins, momentum, liquidity, etc.) |
+| `scripts/fix_fiscal_year_and_winsorize.py` | Fixes fiscal year alignment for non-Dec FYE firms, adds winsorized variables |
+| `scripts/dedupe_and_add_indicators.py` | Deduplicates exact duplicate rows, adds post_ai, disclosure dummies, and recomputes sample flags |
 
 All scripts connect to WRDS via PostgreSQL. Set your password before running:
 
@@ -331,6 +393,19 @@ print(model.summary())
 **Suggested fixed effects:**
 - `C(sector)` — GICS sector fixed effects (11 sectors)
 - `C(fiscal_year)` — Year fixed effects
-- `C(gvkey_ctrl)` — Firm fixed effects (absorbs time-invariant firm heterogeneity)
+- `C(ticker)` — Firm fixed effects (absorbs time-invariant firm heterogeneity)
 
-**Clustering:** Standard errors should be clustered at the firm level (`cluster(df['gvkey_ctrl'])`).
+**Interaction terms:**
+- `post_ai × substantive_ai_disclosure_sentence_intensity` — Tests if AI disclosure effect strengthened after GenAI boom
+- `post_ai × has_substantive_ai` — Tests if having any substantive AI disclosure matters more post-2023
+
+**Sample filtering:**
+```python
+# Tobin's Q regression (contemporaneous valuation)
+df_val = df[df['sample_valuation'] == 1]
+
+# Future performance regression (realized t+1 outcomes)
+df_fut = df[df['sample_future_performance'] == 1]
+```
+
+**Clustering:** Standard errors should be clustered at the firm level (`cluster(df['ticker'])`).
