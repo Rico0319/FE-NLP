@@ -1,29 +1,47 @@
-Slide 1: 10-K Data Extraction & NLP Pipeline
+Slide 1: 10-K MD&A Data Extraction & Cleaning
 
-SEC EDGAR API: Downloaded S&P 500 10-K filings for fiscal years 2019-2025. Parsed HTML to extract MD&A sections using BeautifulSoup. Handled filing variants (10-K, 10-K/A, 10-K405) and missing MD&A cases.
+Data Source: SEC EDGAR API. Downloaded S&P 500 10-K filings for fiscal years 2019-2025. Parsed HTML to extract Item 7 (MD&A) sections. Handled filing variants (10-K, 10-K/A, 10-K405) and missing MD&A cases.
 
-Sentence Segmentation: Split MD&A text into ~1.96 million sentences using spaCy. Applied preprocessing rules to handle tables, exhibits, and boilerplate text.
+Section Boundary Detection:
+- Start: Item 7 "Management's Discussion and Analysis"
+- End: Item 7A "Quantitative and Qualitative Disclosures About Market Risk" or Item 8 "Financial Statements"
+- Removed pseudo-headings from table of contents to avoid mixing adjacent sections
 
-AI Keyword Pre-filtering: Implemented regex-based filter to identify AI-relevant sentences. Reduced candidate pool from ~1.96M to ~3,580 sentences (0.18% hit rate). Keywords included: artificial intelligence, machine learning, deep learning, neural network, generative AI, large language model, automation, algorithm.
+Text Cleaning Pipeline:
+- Stripped HTML/XBRL tags
+- Removed headers, footers, table fragments, navigation strings, encoding noise
+- Standardized whitespace and line breaks
+- Lowercase conversion without aggressive stemming
+- Preserved negation words, modal verbs (may, could, expect, plan), numbers, and percentages
+- Reason: Subsequent generic vs. substantive classification depends on sentence semantics, implementation status, management tone, and firm-specific linkage, not just keyword frequency
 
-LLM Classification: Two concurrent pipeline variants:
-- Kimi CLI subprocess variant: Spawns kimi CLI processes via subprocess. ThreadPoolExecutor with MAX_WORKERS=4. Each worker processes one sentence. Output parsed from stdout with Unicode bullet prefix detection.
-- Generic OpenAI-compatible variant: Standard HTTP client with ThreadPoolExecutor(max_workers=8). Checkpoint/resume via incremental CSV append.
+Sentence Segmentation:
+- Split MD&A into sentence-level observations using spaCy
+- Adapted to 10-K text features: long sentences, semicolons, parentheses, bullet residuals, broken lines
+- Not simple period-based splitting; combined rule-based tokenizer with manual inspection logic
+- Rationale: Same paragraph often contains both broad strategic language and concrete operational detail; sentence-level analysis prevents classification noise from mixed units
 
-Classification taxonomy (mutually exclusive):
-- Generic AI Disclosure: Mentions AI without specific implementation details
-- Substantive AI Implementation: Describes actual AI deployment (technology, use case, investment)
-- Substantive AI Risk/Governance: Discusses AI-related risks, ethics, governance frameworks
-- AI Candidate: Contains AI keywords but insufficient context for classification
+Deduplication & Quality Control:
+- Removed exact duplicate sentences
+- Removed near-duplicate sentences
+- Deleted heading sentences, fragment sentences, and overly short sentences
+- Deleted cross-reference fragments that do not form complete semantic units
+- Reason: Avoid boilerplate language or format repetition inflating disclosure intensity
 
-Output: firm_year_ai_disclosure_summary.csv with 5 intensity measures:
-- n_ai_candidate_sentences
-- n_generic_ai_disclosure_sentences
-- n_substantive_ai_implementation_sentences
-- n_substantive_ai_risk_governance_sentences
-- n_substantive_ai_disclosure_sentences (aggregate)
+AI Candidate Pre-filtering (for Group B):
+- Applied seed dictionary to flag sentences containing AI-related terms
+- Goal: High recall, not high precision
+- Purpose: Provide candidate pool for Group B's classification work
+- Not responsible for generic/substantive judgment
 
-Plus per-10,000-word normalized versions and sentence intensity ratios.
+Output: mdna_sentence_master.jsonl
+- ~1.96 million sentence rows
+- Fields per sentence:
+  - Firm identifiers: cik, gvkey, ticker, company_name, filing_date, fiscal_year, accession_number
+  - MD&A metadata: section_name, mdna_total_word_count, mdna_total_sentence_count, mdna_total_char_count
+  - Sentence fields: sentence_id, sentence_order, sentence_raw, sentence_clean, sentence_word_count
+  - Quality flags: is_exact_duplicate, is_near_duplicate, keep_sentence_flag
+  - AI candidate support: ai_candidate_flag, ai_keyword_matched_terms
 
 
 Slide 2: Control Variable Database Construction
@@ -111,7 +129,7 @@ Challenge 4: gvkey Zero-Padding in WRDS PostgreSQL
 Challenge 5: CRSP-IBES Linkage for Dual-Class Shares
 - Direct ticker merge fails for dual-class shares (different ticker conventions)
 - Correct path: gvkey -> permno (CCM) -> IBES ticker (ibcrsphist)
-- Implementation: 
+- Implementation:
   Step 1: crsp.ccmxpf_lnkhist for gvkey-permno mapping
   Step 2: wrdsapps_link_crsp_ibes.ibcrsphist for permno-IBES_ticker mapping
   Step 3: ibes.statsum_epsus for consensus forecasts
@@ -138,10 +156,10 @@ Regression Sample Flags:
 - sample_valuation: 1,949 observations
   Requirements: tobin_q_winsorized + all AI disclosure vars + all baseline controls non-null
   Baseline controls: log_assets, leverage, sales_growth, rd_to_assets, capex_to_assets, ROA
-  
+
 - sample_future_performance: 1,692 observations
   Requirements: future_ROA + future_sales_growth_winsorized + future_earnings_growth_winsorized + AI vars + baseline controls
-  
+
 - sample_analyst_forecast: ~3,120 observations
   Requirements: fy1_meanest non-null + AI vars + baseline controls
 
